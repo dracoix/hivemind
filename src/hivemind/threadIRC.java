@@ -1,8 +1,6 @@
 package hivemind;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,57 +12,69 @@ import java.net.UnknownHostException;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static javafx.application.ConditionalFeature.SWT;
 
 public class threadIRC extends Thread {
 
+    /*
+    
+     THIS IS MEANT FOR JUSTIN.TV OR TWITCH.TV IRC
+    
+     THIS IS HIGH-INTENSIVE AND MUST BE THREADED
+    
+     Class has been condensed to be set-and-forget from its
+     previous multi-class form. No other class has access to
+     the internals, nor should it.
+    
+     A bridge must be used and contain the method: proc(String s)
+    
+     */
+    private final hiveCore bridge;
+
+    /*
+    
+     This is still thread non-safe, but collisions are so low it
+     should be fine. The intensive time comes from the wait period
+     for the next new message to be available and pre-processed.
+    
+     */
     private String host;
     private int port;
     private String auth;
     private String nick;
     private String chan;
 
-    private Thread t;
     private PrintStream out;
     private InputStream in;
     private BufferedReader bin;
 
-    long last_pong;
-    String str_last_pong = "";
+    private long last_pong;
+    private String str_last_pong = "";
 
-    sendOut myChannel;
-
-    boolean connected;
-
-    private hiveCore outHive;
-
-    public threadIRC(hiveCore hive) throws IOException {
-        this.outHive = hive;
+    public threadIRC(hiveCore bridge) throws IOException {
+        this.bridge = bridge;
         load();
         connect();
-
     }
 
-    public void load() {
+    private void load() {
         Properties props = new Properties();
         InputStream is = null;
 
         try {
             File f = new File("settings.txt");
             if (!f.exists()) {
-
-                System.exit(0);
-
+                System.exit(0);     //No excuses, just close.
             }
             is = new FileInputStream(f);
         } catch (Exception e) {
-            is = null;
             System.exit(0);
         }
+
         try {
             props.load(is);
         } catch (IOException ex) {
             Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
+            System.exit(0);
         }
 
         host = props.getProperty("host");
@@ -86,52 +96,48 @@ public class threadIRC extends Thread {
     }
 
     private void login() {
-        myChannel = getChannel();
+        out.println("JOIN" + " " + chan);
     }
 
     private void register() {
-        String localhost = "localhost";
         out.println("PASS" + " " + auth);
         out.println("NICK" + " " + nick);
     }
 
-    public sendOut getChannel() {
-        return (new sendOut(chan, out));
+    private void send(String msg) {
+        out.println(msg);
     }
 
-    public class sendOut {
-
-        private String name;
-        private PrintStream out;
-
-        protected sendOut(String name, PrintStream out) {
-            this.name = name;
-            this.out = out;
-            out.println("JOIN" + " " + chan);
-        }
-
-        public void println(String msg) {
-            out.println(msg);
+    private void ping() {
+        try {
+            send("PING : " + last_pong);
+        } catch (Exception ex) {
+            Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    public void ping() {
-        myChannel.println("PING : " + last_pong);
-    }
-
+    @Override
     public void run() {
 
-        long last_in = 0;
+        //long last_in = 0;
         long stay_alive = 0;
         long snap_time;
-        String msg = "";
+        String msg = ""; // Pre-Buffer
 
+        // Thread is persistant, stays active during entire life.
         while (true) {
+
+            // Wrapped to prevent passive unrecoverable crash.
             try {
+
+                // Snap to JVM UTC time
                 snap_time = System.currentTimeMillis();
-                if (readAll(msg)) {
-                    last_in = snap_time;
-                }
+
+                // Read from IRC
+                receive(msg);
+
+                //  Stay-Alive Fail-Safe
+                //  Allows miss up to two PONGS
                 if (snap_time - last_pong > 25000) {
                     last_pong = snap_time;
                     try {
@@ -140,6 +146,8 @@ public class threadIRC extends Thread {
                         Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
+
+                // Sary-Alive PING
                 if (snap_time - stay_alive > 12000) {
                     stay_alive = snap_time;
                     ping();
@@ -151,26 +159,35 @@ public class threadIRC extends Thread {
 
     }
 
-    public boolean readAll(String msg) {
+    private boolean receive(String msg) {
+        // Optimized to grab dozens of inputs per second.
         try {
+
+            // Magic starts here.
             msg = bin.readLine();
 
             if (msg != null) {
-                //System.out.println(msg);
+                // Ignore garbage and get the goods.
+                // indexOf uses a char array scanner, O(n)
+                if (msg.indexOf("PRIVMSG " + chan) > -1) {
+
+                    //Send to Hive for processing
+                    bridge.proc(msg);
+
+                    //Done
+                    return true;
+                }
+
+                // Check if PONG is part of garbage.
                 if (msg.indexOf(str_last_pong) > -1) {
                     last_pong = System.currentTimeMillis();
                     str_last_pong = last_pong + "";
-                } else {
-
-                    if (msg.indexOf("PRIVMSG " + chan) > -1) {
-                        outHive.proc(msg);
-                        //System.out.println(msg);
-                    }//else{
-                    //System.out.println(msg);
-                    //}
                 }
+
+                // It was garbage, but it was read...
+                return true;
             }
-            return (msg != null);
+            return false;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
