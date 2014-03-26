@@ -1,11 +1,9 @@
-
 package hivemind;
 
 import java.util.ArrayList;
 
 import hivemind.data_enum;
 import java.util.Iterator;
-
 
 public class playerData implements java.io.Serializable {
 
@@ -20,11 +18,14 @@ public class playerData implements java.io.Serializable {
 
     public long last_tick;
 
-    public final long _60min = 60 * 60 * 1000;
+    static final long _60min = 60 * 60 * 1000;
 
     public long last_count;
 
     public String last_msg = new String();
+
+    public boolean isTroll;
+    public boolean isBot;
 
     public playerData(String name) {
 
@@ -48,7 +49,6 @@ public class playerData implements java.io.Serializable {
         }
         last_count = System.currentTimeMillis();
 
-        long sys = System.currentTimeMillis();
         counts_info[0] = new dataCounts();
         counts_info[1] = new dataCounts();
         counts_info[2] = new dataCounts();
@@ -59,16 +59,17 @@ public class playerData implements java.io.Serializable {
         long stamp = 0;
         while (i.hasNext()) {
             d = i.next();
-            stamp = sys - d.timestamp;
+            stamp = last_count - d.timestamp;
+            if (stamp > _60min) {           // Pre-Process Check
+                i.remove();
+                continue;
+            }
             for (int n = 0; n < counts_info.length; n++) {
-                if (stamp < _60min / (Math.pow(2, n))) {
+                if (stamp < (_60min >> n)) {
                     proc_count(d, counts_info[n]);
                     counts_info[n].runAnalyze();
-                    fastAnalyzeBot(counts_info[n], (long) (_60min / (double) Math.pow(2, n)), n);
+                    fastAnalyzeBot(counts_info[n], (_60min >> n), n);
                 }
-            }
-            if (stamp > _60min) {
-                i.remove();
             }
 
         }
@@ -76,26 +77,16 @@ public class playerData implements java.io.Serializable {
         isTroll = fastAnalyzeTroll(counts_info[0])
                 & fastAnalyzeTroll(counts_info[4]);
 
-        boolean a=false, b = false, c = false;
-        for (int n = 0; n < bot_info.length; n++) {
-            a = a | bot_info[n].isMetronome;
-            b = b | bot_info[n].isSpammer;
+        isMetronome = bot_info[0].isMetronome | bot_info[1].isMetronome | bot_info[2].isMetronome | bot_info[3].isMetronome | bot_info[4].isMetronome;
 
-        }
+        isSpammer = bot_info[0].isSpammer | bot_info[1].isSpammer | bot_info[2].isSpammer | bot_info[3].isSpammer | bot_info[4].isSpammer;
 
-        isMetronome = a;
-
-        isSpammer = b;
-        
-        isBot = a|b;
+        isBot = isMetronome | isSpammer;
 
     }
 
-    public boolean isTroll;
-
-    public boolean isBot;
-
     private boolean fastAnalyzeTroll(dataCounts count) {
+        // TO-DO: None, port went okay.
         if (count.fast_impactSum < 9) {
             return false;
         }
@@ -112,6 +103,10 @@ public class playerData implements java.io.Serializable {
     }
 
     private boolean fastAnalyzeBot(dataCounts count, long span, int index) {
+        // SLOW PORT FROM MONOLITHIC-CLASS
+        // TO-DO:
+        // 1) Fix array initialization, extremely slow method used
+
         if (inputs.size() < 5) {
             return false;
         }
