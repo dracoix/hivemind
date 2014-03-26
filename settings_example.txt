@@ -1,0 +1,5 @@
+host=255.255.255.255
+port=443
+auth=oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+nick=twitchname
+chan=#channelname
