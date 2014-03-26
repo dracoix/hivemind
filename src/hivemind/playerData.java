@@ -60,18 +60,23 @@ public class playerData implements java.io.Serializable {
         while (i.hasNext()) {
             d = i.next();
             stamp = last_count - d.timestamp;
-            if (stamp > _60min) {           // Pre-Process Check
+            if (stamp > _60min) {                           // Pre-Process Check
                 i.remove();
                 continue;
             }
-            for (int n = 0; n < counts_info.length; n++) {
-                if (stamp < (_60min >> n)) {
+            for (int n = 0; n < counts_info.length; n++) {  // Create sub-sets to analyze
+                if (stamp < (_60min >> n)) { 
                     proc_count(d, counts_info[n]);
-                    counts_info[n].runAnalyze();
-                    fastAnalyzeBot(counts_info[n], (_60min >> n), n);
+
                 }
             }
 
+        }
+        
+        // Removed from the while loop
+        for (int n = 0; n < counts_info.length; n++) {      // Analyze sub-sets
+            counts_info[n].runAnalyze();
+            fastAnalyzeBot(counts_info[n], (_60min >> n), n);
         }
 
         isTroll = fastAnalyzeTroll(counts_info[0])
