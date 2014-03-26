@@ -28,7 +28,9 @@ public class threadIRC extends Thread {
     private PrintStream out;
     private InputStream in;
     private BufferedReader bin;
+
     long last_pong;
+    String str_last_pong = "";
 
     sendOut myChannel;
 
@@ -123,27 +125,32 @@ public class threadIRC extends Thread {
         long stay_alive = 0;
         long snap_time;
         String msg = "";
+
         while (true) {
-            snap_time = System.currentTimeMillis();
-            if (readAll(msg)) {
-                last_in = snap_time;
-            }
-            if (snap_time - last_pong > 25000) {
-                last_pong = snap_time;
-                try {
-                    connect();
-                } catch (Exception ex) {
-                    Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
+            try {
+                snap_time = System.currentTimeMillis();
+                if (readAll(msg)) {
+                    last_in = snap_time;
                 }
-            }
-            if (snap_time - stay_alive > 12000) {
-                stay_alive = snap_time;
-                ping();
+                if (snap_time - last_pong > 25000) {
+                    last_pong = snap_time;
+                    try {
+                        connect();
+                    } catch (Exception ex) {
+                        Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }
+                if (snap_time - stay_alive > 12000) {
+                    stay_alive = snap_time;
+                    ping();
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(threadIRC.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
 
     }
-    String str_last_pong = "";
+
     public boolean readAll(String msg) {
         try {
             msg = bin.readLine();
@@ -152,14 +159,14 @@ public class threadIRC extends Thread {
                 //System.out.println(msg);
                 if (msg.indexOf(str_last_pong) > -1) {
                     last_pong = System.currentTimeMillis();
-                    str_last_pong = last_pong +"";
+                    str_last_pong = last_pong + "";
                 } else {
 
                     if (msg.indexOf("PRIVMSG " + chan) > -1) {
                         outHive.proc(msg);
                         //System.out.println(msg);
                     }//else{
-                        //System.out.println(msg);
+                    //System.out.println(msg);
                     //}
                 }
             }
