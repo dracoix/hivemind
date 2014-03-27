@@ -7,7 +7,7 @@ import java.util.ArrayList;
 
 public class nTree extends Thread {
 
-    public ArrayList<vertex> nodes = new ArrayList<vertex>();
+    public ArrayList<vertex> nodes = new ArrayList();
     public hiveCore outHive;
     public bridgeCore outBridge;
 

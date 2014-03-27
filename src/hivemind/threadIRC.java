@@ -28,7 +28,7 @@ public class threadIRC extends Thread {
      A bridge must be used and contain the method: proc(String s)
     
      */
-    private final hiveCore bridge;
+    private final bridge myBridge;
 
     /*
     
@@ -50,8 +50,8 @@ public class threadIRC extends Thread {
     private long last_pong;
     private String str_last_pong = "";
 
-    public threadIRC(hiveCore bridge) throws IOException {
-        this.bridge = bridge;
+    public threadIRC(bridge b) throws IOException {
+        this.myBridge = b;
         load();
         connect();
     }
@@ -172,7 +172,7 @@ public class threadIRC extends Thread {
                 if (msg.indexOf("PRIVMSG " + chan) > -1) {
 
                     //Send to Hive for processing
-                    bridge.proc(msg);
+                    myBridge.proc(msg);
 
                     //Done
                     return true;

@@ -20,6 +20,11 @@ import java.util.logging.Logger;
 
 public class statDump {
 
+    // THIS IS FOR ANALYTICAL USE ONLY
+    // Usage was to calibrate bot detection by weights.
+    // Since the weight code has been removed, there is no need for this.
+    // DISABLED FOR NOW
+    
     public ArrayList<microdataStats> data = new ArrayList();
 
     public statDump() {

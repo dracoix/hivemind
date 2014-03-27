@@ -1,4 +1,3 @@
-
 package hivemind;
 
 import java.io.*;
@@ -45,7 +44,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 
-
 public class Hivemind {
 
     static private hiveCore myHive;
@@ -63,7 +61,7 @@ public class Hivemind {
     static BufferedImage dpad;
 
     static Graphics main_graphics = null;
-    static Thread myGraph = null;
+    //static Thread myGraph = null;
     //static int posX = 0, posY = 0;
     static Font pokefont = new Font(Font.MONOSPACED, Font.BOLD, 16);
     static Font pokefont24 = new Font(Font.MONOSPACED, Font.BOLD, 24);
@@ -73,8 +71,6 @@ public class Hivemind {
     static Font pokefont8 = new Font(Font.MONOSPACED, Font.BOLD, 8);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-
-
 
         try {
             skin = ImageIO.read(new File("hivemon.png"));
@@ -94,8 +90,6 @@ public class Hivemind {
             //System.out.println(e.getMessage());
         }
 
-
-
         try {
             pokefont = Font.createFont(Font.TRUETYPE_FONT, new File("pokefont.ttf"));
             pokefont24 = pokefont.deriveFont(24.0f);
@@ -110,21 +104,20 @@ public class Hivemind {
 
         myHive = new hiveCore();
         myBridge = new bridgeCore();
-        myBridge.tIRC = new threadIRC(myHive);
-        myBridge.tIRC.setDaemon(true);
-        myBridge.tIRC.start();
 
-        myGraph = new nTree(myHive, myBridge);
-        myGraph.setDaemon(true);
-        myGraph.start();
+        myBridge.t_IRC = new threadIRC(myHive);
+        myBridge.t_IRC.setDaemon(true);
+        myBridge.t_IRC.start();
+
+        myBridge.t_nTree = new nTree(myHive, myBridge);
+        myBridge.t_nTree.setDaemon(true);
+        myBridge.t_nTree.start();
+
         try {
             load();
         } catch (Exception e) {
 
         }
-
-
-        Scanner scn = new Scanner(System.in);
 
         myFrame = new window();
 
@@ -187,8 +180,6 @@ public class Hivemind {
 
         myHive.tick();
 
-        long tl, tr, tu, td;
-
         if ((sys_time - sec10_tick) > 10000) {
 
             sec10_tick = sys_time;
@@ -213,10 +204,6 @@ public class Hivemind {
 
     static double ovy = 0.0;
     static double ovx = 0.0;
-
-    static private int cretry;
-
-    static private long con_Tick;
 
     static void load() {
         myHive.load();
@@ -245,11 +232,11 @@ public class Hivemind {
 
         g.drawImage(skin, 0, 0, null);
         //g.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 10));
-        Timestamp timestamp = new Timestamp(System.currentTimeMillis() - myBridge.time_delay - myBridge.fuzzy);
-        SimpleDateFormat fmt = new SimpleDateFormat("HH:mm:ss.SS");
+        Timestamp timestamp;// = new Timestamp(System.currentTimeMillis() - myBridge.time_delay - myBridge.fuzzy);
+        SimpleDateFormat fmt;// = new SimpleDateFormat("HH:mm:ss.SS");
 
 //        fmt.setTimeZone(TimeZone.getTimeZone("GMT"));
-        String st = (fmt.format(timestamp));
+        String st;// = (fmt.format(timestamp));
 //        st = st.substring(st.indexOf(":") + 1);
 //        g.drawString("utc" + st, 16, 28);
 //
@@ -264,7 +251,6 @@ public class Hivemind {
         st = (fmt.format(timestamp));
         st = st.subSequence(0, st.lastIndexOf(".")).toString();
         g.drawString(st, 498, 27);
-
 
         true_players = 0;
         chat_bots = 0;
@@ -437,17 +423,17 @@ public class Hivemind {
 
         g.setColor(Color.cyan);
         str = all_inputs + "";
-        w = (int) g.getFontMetrics(pokefont12).getStringBounds(str, g).getWidth();
+        //w = (int) g.getFontMetrics(pokefont12).getStringBounds(str, g).getWidth();
         g.drawString(str, x + 40 + 4, y + 48);
 
     }
 
     private static void drawBotList(Graphics g, int x, int y) {
 
-        if (listBots.size() == 0) {
+        if (listBots.isEmpty()) {
             return;
         }
-        y += 0;
+
         g.setFont(pokefont16);
 
         playerData p;
@@ -482,15 +468,7 @@ public class Hivemind {
 
     }
 
-    private static String convSeq(String msg) {
-        String tmp = msg + "";
-
-        tmp = tmp.replaceAll("left", "←");
-        tmp = tmp.replaceAll("right", "→");
-        tmp = tmp.replaceAll("up", "↑");
-        tmp = tmp.replaceAll("down", "↓");
-        return tmp;
-    }
+    
 
     private static void drawRealUI(Graphics g, int x, int y, double l, double r, double u, double d, double s, double a, double b) {
         int w = 64;
@@ -829,8 +807,9 @@ public class Hivemind {
             }
 
             g.drawString(fp.name, x + 10, y + i * 10);
-
-            fp.command = convSeq(fp.command);
+            
+                
+            
             w = g.getFontMetrics(pokefont16).getStringBounds(fp.command.toUpperCase(), g).getWidth();
             g.drawString(fp.command.toUpperCase(), (x + 208) - (int) w, y + i * 10);
 
@@ -847,7 +826,7 @@ public class Hivemind {
     }
 
     private static void drawTPP(Graphics g, int x, int y) {
-        if (myHive.official.size() == 0) {
+        if (myHive.official.isEmpty()) {
             return;
         }
         String msg = myHive.official.get(myHive.official.size() - 1);

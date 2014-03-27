@@ -1,7 +1,8 @@
-
 package hivemind;
 
-public class statsData  implements java.io.Serializable  {
+import java.util.ArrayList;
+
+public class statsData implements java.io.Serializable {
 
     double len;
     double sum;
@@ -20,30 +21,25 @@ public class statsData  implements java.io.Serializable  {
     double deltaN_std_p;
     double deltaN_std_s;
 
-    public void init(double[] d, int a, int b) {
-        double[] in = new double[b - a + 1];
-        int p = 0;
-        for (int i = a; i <= b; i++) {
-            in[p] = d[i];
-            p++;
-        }
+    public void init(double[] d) {
 
-        if (in.length < 2) {
+
+        if (d.length < 2) {
             return;
         }
         double last;
         sum = 0;
-        len = in.length;
+        len = d.length;
 
-        last = in[0];
+        last = d[0];
         sum += last;
         double tmp = 0;
         double[] deltaN = new double[(int) len - 1];
-        for (int i = 1; i < in.length; i++) {
-            deltaN[i - 1] = Math.abs(in[i] - last);
+        for (int i = 1; i < d.length; i++) {
+            deltaN[i - 1] = Math.abs(d[i] - last);
             deltaN_sum += deltaN[i - 1];
 
-            last = in[i];
+            last = d[i];
             sum += last;
         }
 
@@ -54,11 +50,11 @@ public class statsData  implements java.io.Serializable  {
         double k = 0;
         double kN = 0;
         double tmpN = 0;
-        tmp = in[0] - mean;
+        tmp = d[0] - mean;
         tmp *= tmp;
         k += tmp;
 
-        for (int i = 1; i < in.length; i++) {
+        for (int i = 1; i < d.length; i++) {
             tmpN = (deltaN[i - 1] - deltaN_mean);
 
             tmpN *= tmpN;
@@ -72,7 +68,7 @@ public class statsData  implements java.io.Serializable  {
 
             kN += tmpN;
 
-            tmp = in[i] - mean;
+            tmp = d[i] - mean;
 
             tmp *= tmp;
             if (tmpN < 2) {
@@ -102,40 +98,60 @@ public class statsData  implements java.io.Serializable  {
 
     }
 
+    public statsData(ArrayList<Double> d, int a, int b) {
+        this();
+        double[] in = new double[b - a + 1];
+        int p = 0;
+        for (int i = a; i <= b; i++) {
+            in[p] = d.get(i);
+            p++;
+        }
+        init(in);
+    }
+
     public statsData(double[] d, int a, int b) {
         this();
-        init(d, a, b);
+                double[] in = new double[b - a + 1];
+        int p = 0;
+        for (int i = a; i <= b; i++) {
+            in[p] = d[i];
+            p++;
+        }
+        init(in);
     }
 
     public statsData(int[] d, int a, int b) {
         this();
-        double[] in = new double[d.length];
-        for (int i = 0; i < d.length; i++) {
-            in[i] = d[i];
-
+               double[] in = new double[b - a + 1];
+        int p = 0;
+        for (int i = a; i <= b; i++) {
+            in[p] = d[i];
+            p++;
         }
-        init(in, a, b);
+        init(in);
     }
 
     public statsData(long[] d, int a, int b) {
         this();
-        double[] in = new double[d.length];
-        for (int i = 0; i < d.length; i++) {
-            in[i] = d[i];
-
+                double[] in = new double[b - a + 1];
+        int p = 0;
+        for (int i = a; i <= b; i++) {
+            in[p] = d[i];
+            p++;
         }
-        init(in, a, b);
+        init(in);
 
     }
 
     public statsData(Double[] d, int a, int b) {
         this();
-        double[] in = new double[d.length];
-        for (int i = 0; i < d.length; i++) {
-            in[i] = d[i];
-
+                double[] in = new double[b - a + 1];
+        int p = 0;
+        for (int i = a; i <= b; i++) {
+            in[p] = d[i];
+            p++;
         }
-        init(in, a, b);
+        init(in);
 
     }
 

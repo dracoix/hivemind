@@ -15,34 +15,8 @@ public class dataCounts implements java.io.Serializable, Cloneable {
 
     int[] counts = new int[20];
 
-    boolean isTroll;
-
     int fast_impactSum;
     int fast_allSum;
-    
-    long last_fast_count;
-
-    private int impact_total() {
-
-        last_fast_count = System.currentTimeMillis();
-        int res_impactSum = 0;
-        for (int i = 0; i < 16; i++) {
-            res_impactSum += counts[i];
-        }
-        fast_impactSum = res_impactSum;
-        return res_impactSum;
-    }
-
-    private int all_total() {
-
-        last_fast_count = System.currentTimeMillis();
-        int res_allSum = 0;
-        for (int i = 0; i < 20; i++) {
-            res_allSum += counts[i];
-        }
-        fast_allSum = res_allSum;
-        return res_allSum;
-    }
 
     public void runAnalyze() {
 

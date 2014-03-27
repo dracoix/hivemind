@@ -1,4 +1,3 @@
-
 package hivemind;
 
 import java.io.BufferedWriter;
@@ -9,7 +8,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import static java.lang.System.nanoTime;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,7 +26,9 @@ import java.util.regex.Pattern;
 
 import hivemind.data_enum.*;
 
-public class hiveCore {
+public class hiveCore implements bridge {
+    
+    // Main butchery of code is contained in this class.
 
     static final int dump_limit = 10;
 
@@ -37,8 +37,7 @@ public class hiveCore {
     public Hashtable<String, playerData> clone_players = new Hashtable();
     public ArrayList<String> official = new ArrayList();
 
-    public statDump massDump = new statDump();
-
+    //public statDump massDump = new statDump();
     data_enum chat_type;
     String chat_snippet;
 
@@ -59,13 +58,11 @@ public class hiveCore {
     double old_yes_fade;
 
     public void tick() {
-        long dtick;
-        ntick = nanoTime();
-        dtick = ntick - otick;
 
-        if (dtick < 333333333) {
+        if (System.currentTimeMillis() - otick < 333) {
             return;
         }
+        otick = System.currentTimeMillis();
 
         for (int i = 0; i < 20; i++) {
             delta_bot_counts[i] = current_bot_counts[i] - old_bot_counts[i];
@@ -87,7 +84,6 @@ public class hiveCore {
             yes_fade = 1;
         }
 
-        otick = nanoTime();
     }
 
     public void clean() {
@@ -145,7 +141,7 @@ public class hiveCore {
                     Logger.getLogger(Hivemind.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            massDump.save();
+            //massDump.save();
         }
         dump();
 
@@ -194,7 +190,7 @@ public class hiveCore {
             }
         }
 
-        massDump.load();
+        //massDump.load();
     }
 
     public void dump() {
@@ -203,21 +199,16 @@ public class hiveCore {
         Iterator<playerData> i = players.values().iterator();
         //playerData p;
         long min20 = 20 * 60 * 1000;
-        microdataStats stattmp = new microdataStats();
+
         clone_players = (Hashtable<String, playerData>) players.clone();
+
+        //microdataStats stattmp = new microdataStats();
         try {
-            statsData tmpStats;
+            //statsData tmpStats;
             for (playerData p : clone_players.values()) {
                 try {
-                    tmpStats = new statsData(p.counts_info[0].counts, 0, 16);
+                    //tmpStats = new statsData(p.counts_info[0].counts, 0, 16);
                     //p.count_all();
-                    if ((System.currentTimeMillis() - p.last_tick) < 12000) {
-                        stattmp = new microdataStats();
-                        stattmp.mean = (int) Math.round(tmpStats.mean * 100);
-                        stattmp.sdv = (int) Math.round(tmpStats.std_dev_p * 100);
-                        stattmp.total = (int) p.counts_info[0].fast_impactSum;
-                        massDump.add(stattmp);
-                    }
                     if ((System.currentTimeMillis() - p.last_tick) < min20) {
                         if ((p.counts_info[0].fast_impactSum > dump_limit)) {
                             full_dumps.add(p);
@@ -246,9 +237,9 @@ public class hiveCore {
         SimpleDateFormat fmt = new SimpleDateFormat("HH:mm:ss.SS");
         fmt.setTimeZone(TimeZone.getTimeZone("GMT"));
         String st = (fmt.format(timestamp));
-        playerData fluff = new playerData(System.currentTimeMillis() + "");
+
         try {
-            String outWrite = "";
+
             File f = new java.io.File("past_hour.txt");
             FileWriter fr = new FileWriter(f);
             BufferedWriter writer = new BufferedWriter(fr);
@@ -262,7 +253,7 @@ public class hiveCore {
                     + "-- INPUT COUNTS ARE FROM THE PAST HOUR -- \n\n"
                     + "OF THE " + (int) players.size() + " USERS... " + (int) full_dumps.size() + " ARE ACTIVE AND HAVE AT LEAST " + dump_limit + " INPUT\n\n"
                     + "IN\tLEFT\tRIGHT\tUP\tDOWN\tA\tB\tX\tY\tSt\tSel\tL\tR\tWait\tDemo\tAnarch\tSeq\tRiot\tChat\tYes\tNo\tσ\t(σ-μ)\tμT\tσT\tTocks60\tTocks15\tUSERNAME\n");
-            String buildit = "";
+            String buildit;
             statsData tmpStats;
             for (playerData e : full_dumps) {
                 count = e.counts_info[0];
@@ -289,11 +280,10 @@ public class hiveCore {
         }
 
         try {
-            String outWrite = "";
+
             File f = new java.io.File("tpp_track.txt");
             FileWriter fr = new FileWriter(f);
             BufferedWriter writer = new BufferedWriter(fr);
-            dataCounts count;
 
             for (String e : official) {
 
@@ -313,19 +303,22 @@ public class hiveCore {
 
     public void proc(String full) {
 
-        full = full.trim();
-        if (!full.contains("!")) {
+        int itmp;
+        itmp = full.indexOf("!");
+        if (itmp < 0) {
             return;
         }
-        if (!full.contains(":")) {
+        String name = full.substring(1, itmp).trim().toLowerCase();
+
+        itmp = full.indexOf(" :");
+        if (itmp < 0) {
             return;
         }
-        String name = full.substring(1, full.indexOf("!"));
+        String msg = full.substring(itmp + 2).trim().toLowerCase();
 
-        String msg = full.substring(full.lastIndexOf(":") + 1);
-
-        if (name.trim().toLowerCase().equals("twitchplayspokemon")) {
-            official.add(System.currentTimeMillis() + "> " + name + ": " + msg.trim());
+        // NEVER USE TOLOWERCASE() AGAIN!
+        if (name.equals("twitchplayspokemon")) {
+            official.add(System.currentTimeMillis() + "> " + name + ": " + msg);
         }
 
         playerData usr;
@@ -334,7 +327,6 @@ public class hiveCore {
         fp.type = player_enum.CASUAL;
         if (!players.containsKey(name)) {
             usr = new playerData(name);
-
         } else {
             usr = players.get(name);
         }
@@ -346,7 +338,6 @@ public class hiveCore {
         }
         if (usr.isMetronome) {
             fp.type = player_enum.METRONOME;
-
         }
 
         if (usr.isSpammer) {
@@ -361,7 +352,7 @@ public class hiveCore {
 
             if (impactFeed.contains(usr.inputs.get(usr.inputs.size() - 1).type)) {
                 fp.cmd_type = usr.inputs.get(usr.inputs.size() - 1).type;
-                fp.command = usr.last_msg.trim().toLowerCase();
+                fp.command = convSeq(usr.last_msg.trim());
                 if (!fp.command.isEmpty()) {
                     fp.inputs = usr.counts_info[4].fast_impactSum;
 
@@ -376,28 +367,25 @@ public class hiveCore {
 
     }
 
-    public void updateFeed() {
-
-    }
-
     public boolean isTroll(playerData p) {
         return (p.isTroll | p.isBot);
     }
 
     public boolean isValidMessage(String msg, playerData player) {
 
-        String full = msg.trim().toLowerCase();
-        if (full.contains(" ")) {
-            msg = full.substring(0, full.indexOf(" "));
+        String full = msg.trim();
+        int itmp = full.indexOf(" ");
+        if (itmp > -1) {
+            msg = full.substring(0, itmp);
         }
-        msg = msg.trim();
-        if (msg.equals("") || msg.isEmpty()) {
-            return false;
-        }
-        if (msg.startsWith(player.name.toLowerCase())) {
+        //msg = msg.trim();
+        if (msg.isEmpty()) {
             return false;
         }
 
+//        if (msg.startsWith(player.name)) {
+//            return false;
+//        }
         // SINGLES
         if (msg.equals("left")) {
             player.addPacket(data_enum.LEFT, msg);
@@ -698,6 +686,8 @@ public class hiveCore {
     }
 
     public boolean isValidNo(String str) {
+
+        // Needs Cleanup
         boolean b = false;
         Pattern p = Pattern.compile("^\\s*n+o+(!|1)*\\s*$");
         b = p.matcher(str).matches();
@@ -721,6 +711,8 @@ public class hiveCore {
     }
 
     public boolean isValidYes(String str) {
+
+        // Needs Cleanup
         boolean b = false;
         Pattern p = Pattern.compile("\\s*y+e+s+\\s*");
         b = p.matcher(str).matches();
@@ -736,4 +728,9 @@ public class hiveCore {
         return b;
     }
 
+    private static String convSeq(String msg) {
+
+        return msg.replaceAll("left", "←").replaceAll("right", "→").replaceAll("up", "↑").replaceAll("down", "↓");
+    }
+    
 }
