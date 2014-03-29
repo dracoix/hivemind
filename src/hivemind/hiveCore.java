@@ -27,9 +27,8 @@ import java.util.regex.Pattern;
 import hivemind.data_enum.*;
 
 public class hiveCore implements bridge {
-    
-    // Main butchery of code is contained in this class.
 
+    // Main butchery of code is contained in this class.
     static final int dump_limit = 10;
 
     boolean failLoad = true;
@@ -513,11 +512,11 @@ public class hiveCore implements bridge {
         }
 
         //SEQUENCES
-        StringBuilder build = new StringBuilder();
+        ArrayList<String> build = new ArrayList();
 
         if (!msg.startsWith("action")) {
             if (isValidSequence(msg, build)) {
-                player.addPacket(data_enum.SEQUENCE, build.toString());
+                player.addPacket(data_enum.SEQUENCE, SeqToString(build));
                 current_counts[15]++;
                 if (isTroll(player)) {
                     current_bot_counts[15]++;
@@ -597,39 +596,85 @@ public class hiveCore implements bridge {
         return str.contains(" ");
     }
 
-    public boolean isValidSequence(String msg, StringBuilder build) {
-
-        if (msg.equals("")) {
+    public boolean isValidSequence(String msg, ArrayList<String> build) {
+        msg = msg + " ";
+        if (msg.trim().equals("")) {
             return true;
         }
 
+        if (msg.startsWith("+") && build.size() > 0) {
+            return isValidSequence(msg.substring(1), build);
+        }
+
         if (msg.startsWith("left")) {
-            build.append("left");
+            if (!build.contains("left")) {
+                build.add("left");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(4), build);
         }
 
         if (msg.startsWith("right")) {
-            build.append("right");
+            if (!build.contains("right")) {
+                build.add("right");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(5), build);
         }
 
         if (msg.startsWith("up")) {
-            build.append("up");
+            if (!build.contains("up")) {
+                build.add("up");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(2), build);
         }
 
         if (msg.startsWith("down")) {
-            build.append("down");
+            if (!build.contains("down")) {
+                build.add("down");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(4), build);
         }
 
         if (msg.startsWith("a")) {
-            build.append("a");
+            if (!build.contains("a")) {
+                build.add("a");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(1), build);
         }
 
         if (msg.startsWith("b")) {
-            build.append("b");
+            if (!build.contains("b")) {
+                build.add("b");
+            } else {
+                return true;
+            }
+            return isValidSequence(msg.substring(1), build);
+        }
+
+        if (msg.startsWith("l")) {
+            if (!build.contains("l")) {
+                build.add("l");
+            } else {
+                return true;
+            }
+            return isValidSequence(msg.substring(1), build);
+        }
+
+        if (msg.startsWith("r")) {
+            if (!build.contains("r")) {
+                build.add("r");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(1), build);
         }
 
@@ -643,33 +688,41 @@ public class hiveCore implements bridge {
 //            return isValidSequence(msg.substring(1), build);
 //        }
         if (msg.startsWith("start")) {
-            build.append("start");
+            if (!build.contains("start")) {
+                build.add("start");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(5), build);
         }
 
         if (msg.startsWith("select")) {
-            build.append("select");
+            if (!build.contains("select")) {
+                build.add("select");
+            } else {
+                return true;
+            }
             return isValidSequence(msg.substring(6), build);
         }
 
-        try {
-            if (build.length() != 0) {
-                if (isNumeric(build.charAt(build.length() - 1) + "")) {
-                } else {
-
-                    if (isNumeric(msg.charAt(0) + "")) {
-                        build.append(msg.charAt(0) + "");
-                        return isValidSequence(msg.substring(1), build);
-                    }
-                }
-            }
-        } catch (Exception e) {
+//        try {
+//            if (build.length() != 0) {
+//                if (isNumeric(build.charAt(build.length() - 1) + "")) {
+//                } else {
+//
+//                    if (isNumeric(msg.charAt(0) + "")) {
+//                        build.append(msg.charAt(0) + "");
+//                        return isValidSequence(msg.substring(1), build);
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            return true;
+//        }
+        if (build.size() > 0) {
             return true;
         }
 
-        if (build.length() > 1) {
-            return true;
-        }
         return false;
 
     }
@@ -685,7 +738,17 @@ public class hiveCore implements bridge {
         }
     }
 
-    public boolean isValidNo(String str) {
+    private String SeqToString(ArrayList<String> s) {
+        String k = "";
+        for (String e : s) {
+            k += e;
+        }
+        return k;
+    }
+
+    public boolean isValidNo(String s) {
+
+        String str = cleanStr(s);
 
         // Needs Cleanup
         boolean b = false;
@@ -710,13 +773,14 @@ public class hiveCore implements bridge {
         return b;
     }
 
-    public boolean isValidYes(String str) {
+    public boolean isValidYes(String s) {
+
+        String str = cleanStr(s);
 
         // Needs Cleanup
         boolean b = false;
-        Pattern p = Pattern.compile("\\s*y+e+s+\\s*");
-        b = p.matcher(str).matches();
-        p = Pattern.compile("\\by+(a+|e+)+(s+|a+|h+|y+)+\\b");
+        Pattern p;
+        p = Pattern.compile("\\by+(a+|e+)[sahy]+");
         b = b | p.matcher(str).matches();
         p = Pattern.compile("^\\s*w+e+\\s*d+i+d+\\s+i+t+(!|.|1)*");
 
@@ -732,5 +796,18 @@ public class hiveCore implements bridge {
 
         return msg.replaceAll("left", "←").replaceAll("right", "→").replaceAll("up", "↑").replaceAll("down", "↓");
     }
-    
+
+    private String cleanStr(String s) {
+        char a = 0, b = 0;
+        String o = "";
+        for (char c : s.toCharArray()) {
+            if ((c != a) || (c != b)) {
+                o += c;
+            }
+            a = b;
+            b = c;
+        }
+        return o;
+    }
+
 }

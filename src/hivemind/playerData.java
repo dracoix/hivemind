@@ -117,7 +117,7 @@ public class playerData implements java.io.Serializable {
         // Removed from the while loop
         for (int n = 0; n < counts_info.length; n++) {      // Analyze sub-sets
             counts_info[n].runAnalyze();
-            fastAnalyzeBot(counts_info[n], time_stats[n], (_60min >> n), n);
+            fastAnalyzeBot(counts_info[n], time_stats[n], n);
         }
 
         isTroll = fastAnalyzeTroll(counts_info[0])
@@ -156,7 +156,7 @@ public class playerData implements java.io.Serializable {
         return tmp;
     }
 
-    private boolean fastAnalyzeBot(dataCounts count, statsData stats, long span, int index) {
+    private boolean fastAnalyzeBot(dataCounts count, statsData stats, int index) {
         // SLOW PORT FROM MONOLITHIC-CLASS
         // TO-DO:
         // 1) Fix array initialization, extremely slow method used
@@ -196,7 +196,7 @@ public class playerData implements java.io.Serializable {
         bot_info[index].tocks = stats.kappaN_g;
 
         bot_info[index].isMetronome = (bot_info[index].sT < 0.4 && bot_info[index].tocks > 9);
-        bot_info[index].isSpammer = (Math.abs(bot_info[index].tocks / (double) count.stat_info_all.sum) > Math.pow(((double) 1799 / 1800), (double) span / 1000));
+        bot_info[index].isSpammer = (Math.abs(bot_info[index].tocks / (double) count.stat_info_all.sum) > Math.pow(((double) 1799 / 1800), count.stat_info_all.sum * 4));
 
         return bot_info[index].isMetronome;
 
