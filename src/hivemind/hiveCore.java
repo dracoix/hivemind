@@ -302,7 +302,7 @@ public class hiveCore implements bridge {
                     + "Names listed are those ACTIVE for the past 20 minutes as of (NOW) - UTC: " + st + "\n"
                     + "\nCORE VERSIONING - playerData: b" + playerData.getDev() + " | dataPacket: b" + dataPacket.getDev()
                     + " | dataCounts: b" + dataCounts.getDev()
-                    + " | Analysis is now implimented as playerData.fastAnalyze<Troll|Bot>() | " + "\n\n"
+                    + " | Analysis is now implemented as playerData.fastAnalyze<Troll|Bot>() | " + "\n\n"
                     + "-- INPUT COUNTS ARE FROM THE PAST HOUR -- \n\n"
                     + "OF THE " + (int) players.size() + " USERS... " + (int) full_dumps.size() + " HAVE AT LEAST " + dump_limit + " INPUTS\n\n"
                     + "IN\tΘ60\tΘ15\tΘ2\tLEFT\tRIGHT\tUP\tDOWN\tA\tB\tSt\tSel\tL\tR\tWait\tDemo\tAnarch\tRiot\tChat\tYes\tNo\tσ\t(σ-μ)\tμT\tσT\tUSERNAME\n");
@@ -375,7 +375,7 @@ public class hiveCore implements bridge {
 
     EnumSet impactFeed = EnumSet.of(data_enum.A, data_enum.B, data_enum.X, data_enum.Y,
             data_enum.LEFT, data_enum.RIGHT, data_enum.UP, data_enum.DOWN,
-            data_enum.START, data_enum.LB, data_enum.RB, data_enum.ANARCHY, data_enum.DEMOCRACY,
+            data_enum.START,data_enum.SELECT, data_enum.LB, data_enum.RB, data_enum.ANARCHY, data_enum.DEMOCRACY,
             data_enum.SEQUENCE, data_enum.WAIT);
 
     public void proc(String full) {

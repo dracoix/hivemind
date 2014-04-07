@@ -90,7 +90,7 @@ public class Hivemind {
         } catch (IOException e) {
             //System.out.println(e.getMessage());
         }
-        
+
         try {
             halo = ImageIO.read(new File("halo.png"));
         } catch (IOException e) {
@@ -432,11 +432,11 @@ public class Hivemind {
         str = all_inputs + "";
         //w = (int) g.getFontMetrics(pokefont12).getStringBounds(str, g).getWidth();
         g.drawString(str, x + 40 + 4, y + 26);
-        
+
         str = softRound(myHive.inputs_per_second) + " ips";
         g.setColor(Color.white);
         w = (int) g.getFontMetrics(pokefont16).getStringBounds(str, g).getWidth();
-         g.setFont(pokefont16);
+        g.setFont(pokefont16);
         g.drawString(str, x + 40 - w / 2, y + 46);
 
     }
@@ -447,7 +447,7 @@ public class Hivemind {
             return;
         }
 
-        g.setFont(pokefont16);
+        g.setFont(pokefont12);
 
         playerData p;
         double w = 0.0;
@@ -455,29 +455,39 @@ public class Hivemind {
         for (int i = 0; i < listBots.size(); i++) {
             p = listBots.get(i);
 
-            widths[i] = g.getFontMetrics(pokefont16).getStringBounds(softRound(p.bot_info[4].mT) + " | " + softRound(p.bot_info[4].sT) + " | " + p.name, g).getWidth() + 16;
+            widths[i] = g.getFontMetrics(pokefont12).getStringBounds(pad(softRound(p.bot_info[4].mT) + "", 6) + "" + pad(softRound(p.bot_info[4].sT) + "", 6) + "" + p.name, g).getWidth() + 16;
             if (widths[i] > w) {
                 w = widths[i];
             }
         }
         g.setColor(Color.black);
-        g.fillRoundRect(x + 104 - ((int) w + 24) / 2, y, (int) w + 24, listBots.size() * 12 + 4, 8, 8);
+        g.fillRoundRect(x + 104 - ((int) w + 4) / 2, y, (int) w + 4, listBots.size() * 10 + 4, 8, 8);
         g.setColor(Color.red);
-        g.drawRoundRect(x + 104 - ((int) w + 24) / 2, y, (int) w + 24, listBots.size() * 12 + 4, 8, 8);
+        g.drawRoundRect(x + 104 - ((int) w + 4) / 2, y, (int) w + 4, listBots.size() * 10 + 4, 8, 8);
+        //g.setColor(Color.red);
         for (int i = 0; i < listBots.size(); i++) {
             p = listBots.get(i);
-            g.setColor(new Color(255, 128, 0));
-            if (p.isBot) {
-                g.setColor(Color.red);
-            }
+//            g.setColor(new Color(255, 128, 0));
+//            if (p.isBot) {
+//                g.setColor(Color.red);
+//            }
             if (p.bot_info[4].isMetronome) {
-                g.drawImage(metro, x + (208 - (int) w) / 2, y + (i + 1) * 12 - 9, null);
-            } else {
+                g.drawString("Δ " + pad(softRound(p.bot_info[4].mT) + "", 6) + "" + pad(softRound(p.bot_info[4].sT) + "", 6) + "" + p.name, x + (208 - (int) w) / 2 + 6, y + (i + 1) * 10);
 
-                g.drawImage(clock, x + (208 - (int) w) / 2, y + (i + 1) * 12 - 9, null);
+//                g.drawImage(metro, x + (208 - (int) w) / 2, y + (i + 1) * 12 - 9, null);
+            } else {
+                g.drawString("Θ " + pad(softRound(p.bot_info[4].mT) + "", 6) + "" + pad(softRound(p.bot_info[4].sT) + "", 6) + "" + p.name, x + (208 - (int) w) / 2 + 6, y + (i + 1) * 10);
+
+//                g.drawImage(clock, x + (208 - (int) w) / 2, y + (i + 1) * 12 - 9, null);
             }
-            g.drawString(softRound(p.bot_info[4].mT) + " | " + softRound(p.bot_info[4].sT) + " | " + p.name, x + (208 - (int) w) / 2 + 16, y + (i + 1) * 12);
+//            g.drawString("Θ " + pad(softRound(p.bot_info[4].mT) +"",6) + "" + pad(softRound(p.bot_info[4].sT)+"",6) + "" + p.name, x + (208 - (int) w) / 2 + 16, y + (i + 1) * 12);
         }
+
+    }
+
+    static String pad(String str, int len) {
+
+        return str + (new String(new char[len - str.length() + 1]).replace('\0', ' '));
 
     }
 
@@ -799,10 +809,18 @@ public class Hivemind {
             fp = myHive.tempFeed.get(i);
             switch (fp.type) {
                 case CASUAL:
-                    g.setColor(new Color(0, 255, 128));
+                    if (myHive.inputs_per_second > 12) {
+                        g.setColor(new Color(32, 144, 255));
+                    } else {
+                        g.setColor(new Color(0, 255, 128));
+                    }
                     break;
                 case HARDCORE:
-                    g.setColor(new Color(224, 0, 255));
+                    if (myHive.inputs_per_second > 12) {
+                        g.setColor(new Color(32, 160, 255));
+                    } else {
+                        g.setColor(new Color(224, 0, 255));
+                    }
                     break;
                 case METRONOME:
                     g.setColor(new Color(192, 64, 64));
@@ -817,7 +835,11 @@ public class Hivemind {
                     g.drawImage(halo, x - 4, y + i * 10 - 8, null);
                     break;
                 case TROLL:
-                    g.setColor(new Color(255, 128, 0));
+                    if (myHive.inputs_per_second > 12) {
+                        g.setColor(new Color(144, 144, 160));
+                    } else {
+                        g.setColor(new Color(255, 128, 0));
+                    }
                     break;
             }
 
