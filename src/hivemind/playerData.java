@@ -19,10 +19,12 @@ public class playerData implements java.io.Serializable {
     // 15             |....|
     // ~8               |..|
     // ~4                |.|
-    public dataCounts[] counts_info = new dataCounts[5];
-    public microbotData[] bot_info = new microbotData[5];
+    public dataCounts[] counts_info = new dataCounts[7];
+    public microbotData[] bot_info = new microbotData[7];
     public ArrayList<Double> times = new ArrayList();
-    public statsData[] time_stats = new statsData[5];
+    public statsData[] time_stats = new statsData[7];
+
+    double[] player_weights = new double[20];
 
     public long last_tick;
 
@@ -36,6 +38,7 @@ public class playerData implements java.io.Serializable {
     public boolean isBot;
     public boolean isMetronome;
     public boolean isSpammer;
+    public boolean isPermaTroll;
 
     public playerData(String name) {
 
@@ -46,12 +49,12 @@ public class playerData implements java.io.Serializable {
         }
     }
 
-    public void tick(dataPacket in) {
-        last_tick = System.currentTimeMillis();
-        inputs.add(in);
-        count_all();
-    }
-
+//    public void tick(dataPacket in, double[] player_weights) {
+//        this.player_weights = player_weights.clone();
+//        last_tick = System.currentTimeMillis();
+//        inputs.add(in);
+//        count_all();
+//    }
     private void count_all() {
 
         // Used as optimization, but lossy. 
@@ -66,13 +69,15 @@ public class playerData implements java.io.Serializable {
         counts_info[2] = new dataCounts();
         counts_info[3] = new dataCounts();
         counts_info[4] = new dataCounts();
+        counts_info[5] = new dataCounts();
+        counts_info[6] = new dataCounts();
 
         Iterator<dataPacket> i = inputs.iterator();
         dataPacket d;
         long stamp;
         times.clear();
 
-        int _30m = 0, _15m = 0, _8m = 0, _4m = 0;
+        int _30m = 0, _15m = 0, _8m = 0, _4m = 0, _2m = 0, _1m = 0;
 
         while (i.hasNext()) {
             d = i.next();
@@ -93,6 +98,16 @@ public class playerData implements java.io.Serializable {
                         proc_count(d, counts_info[3]);
                         if (stamp < (_60min >> 4)) {
                             proc_count(d, counts_info[4]);
+                            if (stamp < (_60min >> 5)) {
+                                proc_count(d, counts_info[5]);
+                                if (stamp < (_60min >> 6)) {
+                                    proc_count(d, counts_info[6], player_weights);
+                                } else {
+                                    _1m++;
+                                }
+                            } else {
+                                _2m++;
+                            }
                         } else {
                             _4m++;
                         }
@@ -108,11 +123,20 @@ public class playerData implements java.io.Serializable {
 
         }
 
+        // I goofed up and reversed the analyzation windows, here's the correction.
+        _15m += _30m;
+        _8m += _15m;
+        _4m += _8m;
+        _2m += _4m;
+        _1m += _2m;
+
         time_stats[0] = new statsData(times, 0, times.size() - 1);
         time_stats[1] = new statsData(times, _30m, times.size() - 1);
         time_stats[2] = new statsData(times, _15m, times.size() - 1);
         time_stats[3] = new statsData(times, _8m, times.size() - 1);
         time_stats[4] = new statsData(times, _4m, times.size() - 1);
+        time_stats[5] = new statsData(times, _2m, times.size() - 1);
+        time_stats[6] = new statsData(times, _1m, times.size() - 1);
 
         // Removed from the while loop
         for (int n = 0; n < counts_info.length; n++) {      // Analyze sub-sets
@@ -120,20 +144,22 @@ public class playerData implements java.io.Serializable {
             fastAnalyzeBot(counts_info[n], time_stats[n], n);
         }
 
-        isTroll = fastAnalyzeTroll(counts_info[0])
-                & fastAnalyzeTroll(counts_info[4]);
+        isTroll = fastAnalyzeTroll(counts_info[6]);
+        //| fastAnalyzeTroll(counts_info[4]);
 
         isMetronome = bot_info[0].isMetronome
                 | bot_info[1].isMetronome
                 | bot_info[2].isMetronome
                 | bot_info[3].isMetronome
-                | bot_info[4].isMetronome;
+                | bot_info[4].isMetronome
+                | bot_info[5].isMetronome;
 
         isSpammer = bot_info[0].isSpammer
                 | bot_info[1].isSpammer
                 | bot_info[2].isSpammer
                 | bot_info[3].isSpammer
-                | bot_info[4].isSpammer;
+                | bot_info[4].isSpammer
+                | bot_info[5].isSpammer;
 
         isBot = isMetronome | isSpammer;
 
@@ -141,76 +167,106 @@ public class playerData implements java.io.Serializable {
 
     private boolean fastAnalyzeTroll(dataCounts count) {
         // TO-DO: None, port went okay.
-        if (count.fast_impactSum < 9) {
+        if (isPermaTroll) {
+            return true;
+        }
+        if (count.fast_impactSum < 1) {
+            isPermaTroll = false;
             return false;
         }
         boolean tmp = false;
         double k;
+
         //1
-        k = Math.abs(count.stat_info_impact.std_dev_p) / (Math.sqrt(15) * count.fast_impactSum / 16);
+        k = Math.abs(count.stat_info_impact.std_dev_p) / (Math.sqrt(14) * count.fast_impactSum / 15);
         tmp = tmp | (k > 0.98 && k < 1.02);
 
         //2
-        k = Math.abs(count.stat_info_impact.std_dev_p) / (((count.fast_impactSum * Math.sqrt(7)) / 16));
+        k = Math.abs(count.stat_info_impact.std_dev_p) / (((count.fast_impactSum * Math.sqrt(26)) / 30));
         tmp = tmp | (k > 0.98 && k < 1.02);
         return tmp;
     }
 
     private boolean fastAnalyzeBot(dataCounts count, statsData stats, int index) {
-        // SLOW PORT FROM MONOLITHIC-CLASS
-        // TO-DO:
-        // 1) Fix array initialization, extremely slow method used
 
-        if (inputs.size() < 5) {
+        if (inputs.size() < 3) {
             return false;
         }
 
-        //double impact_inputs = count.stat_info_impact.sum;
-        if (count.stat_info_impact.sum < 6) {
+        if (count.stat_info_impact.sum < 3) {
             return false;
         }
-//        ArrayList<Double> tmp_delta_times = new ArrayList();
-//        //double all_inputs = count.stat_info_all.sum;
-//
-//        long last = 0;
-//        tmp_delta_times.clear();
-//        dataPacket p;
-//        Iterator<dataPacket> i = inputs.iterator();
-//
-//        while (i.hasNext()) {
-//            p = i.next();
-//
-//            if (System.currentTimeMillis() - p.timestamp < span) {
-//                tmp_delta_times.add((double) (p.timestamp - last) / 1000);
-//                last = p.timestamp;
-//
-//            }
-//        }
-//        Iterator<Double> d = tmp_delta_times.iterator();
-//        tmp_delta_times.remove(0);
-//
-//        statsData stat_times = new statsData((Double[]) tmp_delta_times.toArray(), 0, tmp_delta_times.size() - 1);
 
         bot_info[index].sT = stats.deltaN_std_p;
         bot_info[index].mT = stats.deltaN_mean;
         bot_info[index].tocks = stats.kappaN_g;
 
-        bot_info[index].isMetronome = (bot_info[index].sT < 0.4 && bot_info[index].tocks > 9);
-        bot_info[index].isSpammer = (Math.abs(bot_info[index].tocks / (double) count.stat_info_all.sum) > Math.pow(((double) 1799 / 1800), count.stat_info_all.sum * 4));
+        bot_info[index].isMetronome = (bot_info[index].sT < 0.42 && bot_info[index].tocks > 3);
+        bot_info[index].isSpammer = (Math.abs(bot_info[index].tocks / (double) count.stat_info_all.sum) > Math.pow((((double) count.stat_info_all.sum - 1) / count.stat_info_all.sum), count.stat_info_all.sum / 4));
 
         return bot_info[index].isMetronome;
 
     }
 
-    public void addPacket(data_enum type, String msg) {
+    public void addPacket(data_enum type, String msg, double[] player_weights) {
+        this.player_weights = player_weights.clone();
         inputs.add(new dataPacket(type));
         last_msg = msg;
         last_tick = System.currentTimeMillis();
         count_all();
     }
 
+    public void addPacket(data_enum type, String msg, ArrayList<data_enum> builder, double[] player_weights) {
+
+        this.player_weights = player_weights.clone();
+        if (type == data_enum.SEQUENCE) {
+            inputs.add(new dataPacket(builder));
+        } else {
+            inputs.add(new dataPacket(type));
+        }
+        last_msg = msg;
+        last_tick = System.currentTimeMillis();
+        count_all();
+    }
+
+    private void proc_count(dataPacket in, dataCounts count, double[] player_weights) {
+
+        if (in.type == data_enum.SEQUENCE) {
+
+            for (int i = 0; i < in.combo.size(); i++) {
+                if (in.combo.get(i) == data_enum.SELECT) {
+                    if (isSpammer) {
+                        isPermaTroll = true;
+                    }
+                    count.counts[in.combo.get(i).getCode()] += 200;
+                } else {
+                    count.counts[in.combo.get(i).getCode()] += ((double) 1 / (double) in.combo.size()) * player_weights[in.combo.get(i).getCode()] * 3;
+                }
+            }
+
+            return;
+        }
+        if (in.type == data_enum.SELECT) {
+            if (isSpammer) {
+                isPermaTroll = true;
+            }
+            count.counts[in.type.getCode()] += 200;
+            return;
+        }
+        count.counts[in.type.getCode()] += player_weights[in.type.getCode()] * 3;
+
+    }
+
     private void proc_count(dataPacket in, dataCounts count) {
 
+        if (in.type == data_enum.SEQUENCE) {
+
+            for (int i = 0; i < in.combo.size(); i++) {
+                count.counts[in.combo.get(i).getCode()] += (double) 1 / (double) in.combo.size();
+            }
+
+            return;
+        }
         count.counts[in.type.getCode()]++;
 
     }

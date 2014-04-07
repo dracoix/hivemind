@@ -13,14 +13,14 @@ public class dataCounts implements java.io.Serializable, Cloneable {
     statsData stat_info_impact = new statsData();
     statsData stat_info_all =new statsData();
 
-    int[] counts = new int[20];
+    double[] counts = new double[20];
 
     int fast_impactSum;
     int fast_allSum;
 
     public void runAnalyze() {
 
-        stat_info_impact = new statsData(counts, 0, 15);
+        stat_info_impact = new statsData(counts, 0, 14);
         fast_impactSum = (int) stat_info_impact.sum;
         stat_info_all = new statsData(counts, 0, 19);
         fast_allSum = (int) stat_info_all.sum;

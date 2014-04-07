@@ -1,6 +1,4 @@
-
 package hivemind;
-
 
 public enum data_enum implements java.io.Serializable {
 
@@ -20,4 +18,43 @@ public enum data_enum implements java.io.Serializable {
         return type;
     }
 
+    public String getString() {
+        switch (type) {
+            case 0:
+                return "left";
+            case 1:
+                return "right";
+            case 2:
+                return "up";
+            case 3:
+                return "down";
+            case 4:
+                return "a";
+            case 5:
+                return "b";
+            case 6:
+                return "x";
+            case 7:
+                return "y";
+            case 8:
+                return "start";
+            case 9:
+                return "select";
+            case 10:
+                return "l";
+            case 11:
+                return "r";
+            case 12:
+                return "wait";
+            case 13:
+                return "democracy";
+            case 14:
+                return "anarchy";
+            case 18:
+                return "yes";
+            case 19:
+                return "no";
+        }
+        return "";
+    }
 }

@@ -29,7 +29,7 @@ import hivemind.data_enum.*;
 public class hiveCore implements bridge {
 
     // Main butchery of code is contained in this class.
-    static final int dump_limit = 10;
+    static final int dump_limit = 1;
 
     boolean failLoad = true;
     public Hashtable<String, playerData> players = new Hashtable();
@@ -44,17 +44,27 @@ public class hiveCore implements bridge {
     long[] delta_counts = new long[20];
     long[] old_counts = new long[20];
 
+    double inputs_per_second;
+
     long[] current_bot_counts = new long[20];
     long[] delta_bot_counts = new long[20];
     long[] old_bot_counts = new long[20];
 
+    double[] repaid_old_delta_count = new double[20];
+    double[] rapid_delta_count = new double[20];
+    double[] rapid_delta_weight = new double[20];
+
+    double player_weight[] = new double[20];
+
     ArrayList<feedPacket> tempFeed = new ArrayList();
-    long otick, ntick;
+    long otick, ntick, rapid_tick, ips_tick;
 
     double no_fade;
     double yes_fade;
     double old_no_fade;
     double old_yes_fade;
+
+    double _ips;
 
     public void tick() {
 
@@ -66,6 +76,9 @@ public class hiveCore implements bridge {
         for (int i = 0; i < 20; i++) {
             delta_bot_counts[i] = current_bot_counts[i] - old_bot_counts[i];
             delta_counts[i] = current_counts[i] - old_counts[i];
+
+            _ips += delta_counts[i];
+
             old_bot_counts[i] = current_bot_counts[i];
             old_counts[i] = current_counts[i];
         }
@@ -82,6 +95,47 @@ public class hiveCore implements bridge {
         if (yes_fade < 1) {
             yes_fade = 1;
         }
+
+        if (System.currentTimeMillis() - ips_tick < 1000) {
+            return;
+        }
+        ips_tick = System.currentTimeMillis();
+
+        inputs_per_second = (inputs_per_second + _ips) / 2;
+        _ips = 0;
+
+        if (System.currentTimeMillis() - rapid_tick < 14062) {
+            return;
+        }
+        rapid_tick = System.currentTimeMillis();
+
+        for (int i = 0; i < 15; i++) {
+
+            rapid_delta_count[i] = (current_counts[i] - current_bot_counts[i]) - repaid_old_delta_count[i];
+
+            repaid_old_delta_count[i] = (current_counts[i] - current_bot_counts[i]);
+        }
+
+        double tmp = 0;
+
+        for (int i = 0; i < 15; i++) {
+            tmp = tmp + rapid_delta_count[i] * rapid_delta_count[i];
+        }
+
+        tmp = Math.sqrt(tmp);
+
+        if (tmp == 0) {
+            return;
+        }
+
+        for (int i = 0; i < 15; i++) {
+            rapid_delta_weight[i] = 1.5 - (rapid_delta_count[i] / tmp);
+            rapid_delta_weight[i] *= rapid_delta_weight[i];
+            rapid_delta_weight[i] *= rapid_delta_weight[i];
+            rapid_delta_weight[i] *= rapid_delta_weight[i];
+        }
+
+        player_weight = rapid_delta_weight.clone();
 
     }
 
@@ -209,7 +263,7 @@ public class hiveCore implements bridge {
                     //tmpStats = new statsData(p.counts_info[0].counts, 0, 16);
                     //p.count_all();
                     if ((System.currentTimeMillis() - p.last_tick) < min20) {
-                        if ((p.counts_info[0].fast_impactSum > dump_limit)) {
+                        if ((p.counts_info[0].fast_impactSum >= dump_limit)) {
                             full_dumps.add(p);
                         }
                     }
@@ -250,25 +304,49 @@ public class hiveCore implements bridge {
                     + " | dataCounts: b" + dataCounts.getDev()
                     + " | Analysis is now implimented as playerData.fastAnalyze<Troll|Bot>() | " + "\n\n"
                     + "-- INPUT COUNTS ARE FROM THE PAST HOUR -- \n\n"
-                    + "OF THE " + (int) players.size() + " USERS... " + (int) full_dumps.size() + " ARE ACTIVE AND HAVE AT LEAST " + dump_limit + " INPUT\n\n"
-                    + "IN\tLEFT\tRIGHT\tUP\tDOWN\tA\tB\tX\tY\tSt\tSel\tL\tR\tWait\tDemo\tAnarch\tSeq\tRiot\tChat\tYes\tNo\tσ\t(σ-μ)\tμT\tσT\tTocks60\tTocks15\tUSERNAME\n");
+                    + "OF THE " + (int) players.size() + " USERS... " + (int) full_dumps.size() + " HAVE AT LEAST " + dump_limit + " INPUTS\n\n"
+                    + "IN\tΘ60\tΘ15\tΘ2\tLEFT\tRIGHT\tUP\tDOWN\tA\tB\tSt\tSel\tL\tR\tWait\tDemo\tAnarch\tRiot\tChat\tYes\tNo\tσ\t(σ-μ)\tμT\tσT\tUSERNAME\n");
             String buildit;
             statsData tmpStats;
+            float tmp;
             for (playerData e : full_dumps) {
                 count = e.counts_info[0];
-                buildit = count.fast_impactSum + "";
+                buildit = count.fast_impactSum + ""
+                        + "\t" + (int) e.bot_info[0].tocks
+                        + "\t" + (int) e.bot_info[2].tocks
+                        + "\t" + (int) e.bot_info[5].tocks;
+                for (int n = 0; n < 6; n++) {
+                    tmp = (float) Math.round(count.counts[n] * 10) / 10;
+                    if (tmp > 0) {
+                        buildit += "\t" + tmp;
+                    } else {
+                        buildit += "\t    ";
+                    }
+                }
 
-                for (int n = 0; n < 20; n++) {
-                    buildit += "\t" + count.counts[n];
+                for (int n = 8; n < 12; n++) {
+                    tmp = (float) Math.round(count.counts[n] * 10) / 10;
+                    if (tmp > 0) {
+                        buildit += "\t" + tmp;
+                    } else {
+                        buildit += "\t    ";
+                    }
+                }
+
+                for (int n = 12; n < 15; n++) {
+                    buildit += "\t" + (int) Math.round(count.counts[n] * 10) / 10;
+                }
+
+                for (int n = 16; n < 20; n++) {
+                    buildit += "\t" + (int) Math.round(count.counts[n] * 10) / 10;
                 }
                 tmpStats = new statsData(e.counts_info[0].counts, 0, 16);
                 buildit
                         += "\t" + (float) Math.round(tmpStats.std_dev_p * 10) / 10
                         + "\t" + (float) Math.round(Math.abs((float) Math.round(tmpStats.std_dev_p * 10) / 10 - (float) Math.round(tmpStats.mean * 10) / 10) * 10) / 10
                         + "\t" + (float) Math.round(e.bot_info[0].mT * 10) / 10
-                        + "\t" + (float) Math.round(e.bot_info[0].sT * 10) / 10
-                        + "\t" + (int) Math.round(e.bot_info[0].tocks * 10) / 10
-                        + "\t" + (int) Math.round(e.bot_info[2].tocks * 10) / 10;
+                        + "\t" + (float) Math.round(e.bot_info[0].sT * 10) / 10;
+
                 writer.write(buildit
                         + "\t" + e.name + "\n");
 
@@ -297,7 +375,7 @@ public class hiveCore implements bridge {
 
     EnumSet impactFeed = EnumSet.of(data_enum.A, data_enum.B, data_enum.X, data_enum.Y,
             data_enum.LEFT, data_enum.RIGHT, data_enum.UP, data_enum.DOWN,
-            data_enum.START, data_enum.LB, data_enum.RB, data_enum.ANARCHY,
+            data_enum.START, data_enum.LB, data_enum.RB, data_enum.ANARCHY, data_enum.DEMOCRACY,
             data_enum.SEQUENCE, data_enum.WAIT);
 
     public void proc(String full) {
@@ -341,6 +419,9 @@ public class hiveCore implements bridge {
 
         if (usr.isSpammer) {
             fp.type = player_enum.SPAMMER;
+            if (!usr.isTroll) {
+                fp.type = player_enum.HELPER;
+            }
         }
 
         usr.last_msg = "";
@@ -387,7 +468,7 @@ public class hiveCore implements bridge {
 //        }
         // SINGLES
         if (msg.equals("left")) {
-            player.addPacket(data_enum.LEFT, msg);
+            player.addPacket(data_enum.LEFT, msg, player_weight);
             current_counts[0]++;
             if (isTroll(player)) {
                 current_bot_counts[0]++;
@@ -396,7 +477,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("right")) {
-            player.addPacket(data_enum.RIGHT, msg);
+            player.addPacket(data_enum.RIGHT, msg, player_weight);
             current_counts[1]++;
             if (isTroll(player)) {
                 current_bot_counts[1]++;
@@ -405,7 +486,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("up")) {
-            player.addPacket(data_enum.UP, msg);
+            player.addPacket(data_enum.UP, msg, player_weight);
             current_counts[2]++;
             if (isTroll(player)) {
                 current_bot_counts[2]++;
@@ -414,7 +495,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("down")) {
-            player.addPacket(data_enum.DOWN, msg);
+            player.addPacket(data_enum.DOWN, msg, player_weight);
             current_counts[3]++;
             if (isTroll(player)) {
                 current_bot_counts[3]++;
@@ -423,7 +504,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("a")) {
-            player.addPacket(data_enum.A, msg);
+            player.addPacket(data_enum.A, msg, player_weight);
             current_counts[4]++;
             if (isTroll(player)) {
                 current_bot_counts[4]++;
@@ -432,7 +513,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("b")) {
-            player.addPacket(data_enum.B, msg);
+            player.addPacket(data_enum.B, msg, player_weight);
             current_counts[5]++;
             if (isTroll(player)) {
                 current_bot_counts[5]++;
@@ -441,7 +522,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("l")) {
-            player.addPacket(data_enum.LB, msg);
+            player.addPacket(data_enum.LB, msg, player_weight);
             current_counts[10]++;
             if (isTroll(player)) {
                 current_bot_counts[10]++;
@@ -450,7 +531,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("r")) {
-            player.addPacket(data_enum.RB, msg);
+            player.addPacket(data_enum.RB, msg, player_weight);
             current_counts[11]++;
             if (isTroll(player)) {
                 current_bot_counts[11]++;
@@ -458,7 +539,7 @@ public class hiveCore implements bridge {
             return true;
         }
         if (msg.equals("start")) {
-            player.addPacket(data_enum.START, msg);
+            player.addPacket(data_enum.START, msg, player_weight);
             current_counts[8]++;
             if (isTroll(player)) {
                 current_bot_counts[8]++;
@@ -467,7 +548,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("select")) {
-            player.addPacket(data_enum.SELECT, msg);
+            player.addPacket(data_enum.SELECT, msg, player_weight);
             current_counts[9]++;
             if (isTroll(player)) {
                 current_bot_counts[9]++;
@@ -476,7 +557,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("wait")) {
-            player.addPacket(data_enum.WAIT, msg);
+            player.addPacket(data_enum.WAIT, msg, player_weight);
             current_counts[12]++;
             if (isTroll(player)) {
                 current_bot_counts[12]++;
@@ -485,7 +566,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("start9")) {
-            player.addPacket(data_enum.RIOT, msg);
+            player.addPacket(data_enum.RIOT, msg, player_weight);
             current_counts[16]++;
             if (isTroll(player)) {
                 current_bot_counts[16]++;
@@ -494,7 +575,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("anarchy")) {
-            player.addPacket(data_enum.ANARCHY, msg);
+            player.addPacket(data_enum.ANARCHY, msg, player_weight);
             current_counts[14]++;
             if (isTroll(player)) {
                 current_bot_counts[14]++;
@@ -503,7 +584,7 @@ public class hiveCore implements bridge {
         }
 
         if (msg.equals("democracy")) {
-            player.addPacket(data_enum.DEMOCRACY, msg);
+            player.addPacket(data_enum.DEMOCRACY, msg, player_weight);
             current_counts[13]++;
             if (isTroll(player)) {
                 current_bot_counts[13]++;
@@ -512,21 +593,23 @@ public class hiveCore implements bridge {
         }
 
         //SEQUENCES
-        ArrayList<String> build = new ArrayList();
+        ArrayList<data_enum> build = new ArrayList();
 
         if (!msg.startsWith("action")) {
-            if (isValidSequence(msg, build)) {
-                player.addPacket(data_enum.SEQUENCE, SeqToString(build));
-                current_counts[15]++;
-                if (isTroll(player)) {
-                    current_bot_counts[15]++;
+            if (msg.contains("+") || msg.contains(",")) {
+                if (isValidSequence(msg, build)) {
+                    player.addPacket(data_enum.SEQUENCE, SeqToString(build), build, player_weight);
+                    current_counts[15]++;
+                    if (isTroll(player)) {
+                        current_bot_counts[15]++;
+                    }
+                    return true;
                 }
-                return true;
             }
         }
         //CHAT
         if (full.contains("riot")) {
-            player.addPacket(data_enum.RIOT, "");
+            player.addPacket(data_enum.RIOT, "", player_weight);
             current_counts[16]++;
             if (isTroll(player)) {
                 current_bot_counts[16]++;
@@ -535,7 +618,7 @@ public class hiveCore implements bridge {
         }
 
         if (isValidYes(full)) {
-            player.addPacket(data_enum.YES, "yes");
+            player.addPacket(data_enum.YES, "yes", player_weight);
             chat_type = data_enum.YES;
             if (isValidChat(full)) {
                 chat_snippet = full;
@@ -548,7 +631,7 @@ public class hiveCore implements bridge {
         }
 
         if (isValidNo(full)) {
-            player.addPacket(data_enum.NO, "no");
+            player.addPacket(data_enum.NO, "no", player_weight);
             chat_type = data_enum.NO;
             if (isValidChat(full)) {
                 chat_snippet = full;
@@ -564,7 +647,7 @@ public class hiveCore implements bridge {
             return false;
         }
 
-        player.addPacket(data_enum.CHAT, "");
+        player.addPacket(data_enum.CHAT, "", player_weight);
         if (isValidChat(full)) {
             chat_type = data_enum.CHAT;
             chat_snippet = full;
@@ -596,7 +679,7 @@ public class hiveCore implements bridge {
         return str.contains(" ");
     }
 
-    public boolean isValidSequence(String msg, ArrayList<String> build) {
+    public boolean isValidSequence(String msg, ArrayList<data_enum> build) {
         msg = msg + " ";
         if (msg.trim().equals("")) {
             return true;
@@ -606,45 +689,41 @@ public class hiveCore implements bridge {
             return isValidSequence(msg.substring(1), build);
         }
 
+        if (msg.startsWith(",") && build.size() > 0) {
+            return isValidSequence(msg.substring(1), build);
+        }
+
         if (msg.startsWith("left")) {
-            if (!build.contains("left")) {
-                build.add("left");
-            } else {
-                return true;
-            }
+
+            build.add(data_enum.LEFT);
+
             return isValidSequence(msg.substring(4), build);
         }
 
         if (msg.startsWith("right")) {
-            if (!build.contains("right")) {
-                build.add("right");
-            } else {
-                return true;
-            }
+
+            build.add(data_enum.RIGHT);
+
             return isValidSequence(msg.substring(5), build);
         }
 
         if (msg.startsWith("up")) {
-            if (!build.contains("up")) {
-                build.add("up");
-            } else {
-                return true;
-            }
+
+            build.add(data_enum.UP);
+
             return isValidSequence(msg.substring(2), build);
         }
 
         if (msg.startsWith("down")) {
-            if (!build.contains("down")) {
-                build.add("down");
-            } else {
-                return true;
-            }
+
+            build.add(data_enum.DOWN);
+
             return isValidSequence(msg.substring(4), build);
         }
 
         if (msg.startsWith("a")) {
-            if (!build.contains("a")) {
-                build.add("a");
+            if (!build.contains(data_enum.A)) {
+                build.add(data_enum.A);
             } else {
                 return true;
             }
@@ -652,8 +731,8 @@ public class hiveCore implements bridge {
         }
 
         if (msg.startsWith("b")) {
-            if (!build.contains("b")) {
-                build.add("b");
+            if (!build.contains(data_enum.B)) {
+                build.add(data_enum.B);
             } else {
                 return true;
             }
@@ -661,8 +740,8 @@ public class hiveCore implements bridge {
         }
 
         if (msg.startsWith("l")) {
-            if (!build.contains("l")) {
-                build.add("l");
+            if (!build.contains(data_enum.LB)) {
+                build.add(data_enum.LB);
             } else {
                 return true;
             }
@@ -670,8 +749,8 @@ public class hiveCore implements bridge {
         }
 
         if (msg.startsWith("r")) {
-            if (!build.contains("r")) {
-                build.add("r");
+            if (!build.contains(data_enum.RB)) {
+                build.add(data_enum.RB);
             } else {
                 return true;
             }
@@ -688,8 +767,8 @@ public class hiveCore implements bridge {
 //            return isValidSequence(msg.substring(1), build);
 //        }
         if (msg.startsWith("start")) {
-            if (!build.contains("start")) {
-                build.add("start");
+            if (!build.contains(data_enum.START)) {
+                build.add(data_enum.START);
             } else {
                 return true;
             }
@@ -697,8 +776,8 @@ public class hiveCore implements bridge {
         }
 
         if (msg.startsWith("select")) {
-            if (!build.contains("select")) {
-                build.add("select");
+            if (!build.contains(data_enum.SELECT)) {
+                build.add(data_enum.SELECT);
             } else {
                 return true;
             }
@@ -738,10 +817,10 @@ public class hiveCore implements bridge {
         }
     }
 
-    private String SeqToString(ArrayList<String> s) {
+    private String SeqToString(ArrayList<data_enum> s) {
         String k = "";
-        for (String e : s) {
-            k += e;
+        for (data_enum e : s) {
+            k += e.getString();
         }
         return k;
     }

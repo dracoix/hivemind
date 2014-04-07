@@ -56,6 +56,7 @@ public class Hivemind {
 
     static BufferedImage clock;
     static BufferedImage metro;
+    static BufferedImage halo;
 
     static window myFrame;
     static BufferedImage dpad;
@@ -86,6 +87,12 @@ public class Hivemind {
 
         try {
             metro = ImageIO.read(new File("metron.png"));
+        } catch (IOException e) {
+            //System.out.println(e.getMessage());
+        }
+        
+        try {
+            halo = ImageIO.read(new File("halo.png"));
         } catch (IOException e) {
             //System.out.println(e.getMessage());
         }
@@ -410,21 +417,27 @@ public class Hivemind {
         g.setFont(pokefont24);
         int w = (int) g.getFontMetrics(pokefont24).getStringBounds(str, g).getWidth();
 
-        g.drawString(str, x + 40 - w / 2, y + 32);
+        g.drawString(str, x + 40 - w / 2, y + 16);
 
         str = bot_inputs + "";
         g.setFont(pokefont12);
         w = (int) g.getFontMetrics(pokefont12).getStringBounds(str, g).getWidth();
-        g.drawString(str, x + 40 - w - 4, y + 48);
+        g.drawString(str, x + 40 - w - 4, y + 26);
 
         g.setColor(Color.white);
 
-        g.drawString("/", x + 40 - 2, y + 48);
+        g.drawString("/", x + 40 - 2, y + 26);
 
         g.setColor(Color.cyan);
         str = all_inputs + "";
         //w = (int) g.getFontMetrics(pokefont12).getStringBounds(str, g).getWidth();
-        g.drawString(str, x + 40 + 4, y + 48);
+        g.drawString(str, x + 40 + 4, y + 26);
+        
+        str = softRound(myHive.inputs_per_second) + " ips";
+        g.setColor(Color.white);
+        w = (int) g.getFontMetrics(pokefont16).getStringBounds(str, g).getWidth();
+         g.setFont(pokefont16);
+        g.drawString(str, x + 40 - w / 2, y + 46);
 
     }
 
@@ -467,8 +480,6 @@ public class Hivemind {
         }
 
     }
-
-    
 
     private static void drawRealUI(Graphics g, int x, int y, double l, double r, double u, double d, double s, double a, double b) {
         int w = 64;
@@ -801,15 +812,17 @@ public class Hivemind {
                     g.setColor(new Color(255, 112, 0));
                     g.drawImage(clock, x - 4, y + i * 10 - 8, null);
                     break;
+                case HELPER:
+                    g.setColor(new Color(224, 224, 224));
+                    g.drawImage(halo, x - 4, y + i * 10 - 8, null);
+                    break;
                 case TROLL:
                     g.setColor(new Color(255, 128, 0));
                     break;
             }
 
             g.drawString(fp.name, x + 10, y + i * 10);
-            
-                
-            
+
             w = g.getFontMetrics(pokefont16).getStringBounds(fp.command.toUpperCase(), g).getWidth();
             g.drawString(fp.command.toUpperCase(), (x + 208) - (int) w, y + i * 10);
 
